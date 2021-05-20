@@ -124,11 +124,15 @@ let regions = {
     "*default*" : { origin: 0, length: 0 },
 };
 
+let loadedfiles = [];
+
 function parseMapFileText(contents) {
     let lines = contents.split("\n");
     for (let i = 0; i<lines.length;) {
         if (lines[i] == "Memory Configuration") {
             i = parseMemoryConfiguration(lines, i);
+        } else if (lines[i] == "Linker script and memory map") {
+            i = parseLoadedFiles(lines, i);
         } else {
             i++;
         }
@@ -147,20 +151,14 @@ function parseMemoryConfiguration(lines, i) {
     return i;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+function parseLoadedFiles(lines, i) {
+    i += 2;
+    while (lines[i] != "") {
+        let res = lines[i].match(/^LOAD (.+)$/);
+        if (res) {
+            loadedfiles.push(res[1]);
+        }
+        i++;
+    }
+    return i;
+}
