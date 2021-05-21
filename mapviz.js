@@ -168,5 +168,21 @@ function parseLoadedFilesAndSymbols(lines, i) {
     return i;
 }
 
+let outputsections = [];
+let inputsections = [];
 function parseSections(lines, i) {
+    let current_osname = "";
+    while (i<lines.length) {
+        let res = lines[i].match(/^([^\s]+)\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))$/);
+        /* This is an output section with addr and size on same line */
+        if (res) {
+            current_osname = res[1];
+            outputsections.push(
+                { name: current_osname, addr: parseInt(res[2]), size: parseInt(res[4]) });
+        } else if ((res = lines[i].match(symbolRegex))) {
+            symbols[res[3]] = parseInt(res[1]);
+        }
+        i++;
+    }
+    return i;
 }
