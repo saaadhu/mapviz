@@ -178,9 +178,16 @@ function parseSections(lines, i) {
         if (res) {
             current_osname = res[1];
             outputsections.push(
-                { name: current_osname, addr: parseInt(res[2]), size: parseInt(res[4]) });
+                { name: current_osname, addr: parseInt(res[2]), size: parseInt(res[4])});
         } else if ((res = lines[i].match(symbolRegex))) {
             symbols[res[3]] = parseInt(res[1]);
+        } else if ((res = lines[i].match(/^([^\s]+)$/))) {
+            /* Output section with just name on first line, following line
+               has addr and size */
+            current_osname = res[1];
+        } else if ((res = lines[i].match(/^\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))$/))) {
+            outputsections.push(
+                { name: current_osname, addr: parseInt(res[1]), size: parseInt(res[3])});
         }
         i++;
     }
