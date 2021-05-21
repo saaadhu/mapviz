@@ -173,6 +173,7 @@ let inputsections = [];
 function parseSections(lines, i) {
     let current_name = "";
     let current_section = null;
+    let current_os = null;
     while (i<lines.length) {
         let res = lines[i].match(/^( )?([^\s]+)\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))( (.*))?$/);
         if (res) {
@@ -185,8 +186,11 @@ function parseSections(lines, i) {
                 current_section.type = "input";
                 current_section.file = res[8];
                 inputsections.push (current_section);
+                current_os.children.push(current_section);
             } else {
                 current_section.type = "output";
+                current_section.children = [];
+                current_os = current_section;
                 outputsections.push (current_section);
             }
         } else if ((res = lines[i].match(symbolRegex))) {
@@ -200,8 +204,11 @@ function parseSections(lines, i) {
             if (res[6]) {
                 current_section.file = res[6];
                 current_section.type = "input";
+                current_os.children.push(current_section);
             } else {
                 current_section.type = "output";
+                current_section.children = [];
+                current_os = current_section;
             }
 
             let arr = current_section.type == "output" ? outputsections : inputsections;
