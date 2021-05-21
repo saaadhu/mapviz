@@ -125,6 +125,7 @@ let regions = {
 };
 
 let loadedfiles = [];
+let symbols = {};
 
 function parseMapFileText(contents) {
     let lines = contents.split("\n");
@@ -132,7 +133,8 @@ function parseMapFileText(contents) {
         if (lines[i] == "Memory Configuration") {
             i = parseMemoryConfiguration(lines, i);
         } else if (lines[i] == "Linker script and memory map") {
-            i = parseLoadedFiles(lines, i);
+            i = parseLoadedFilesAndSymbols(lines, i);
+            i = parseSections(lines, i);
         } else {
             i++;
         }
@@ -151,14 +153,20 @@ function parseMemoryConfiguration(lines, i) {
     return i;
 }
 
-function parseLoadedFiles(lines, i) {
+const symbolRegex = /^\s+\[?(0x([0-9a-f])+)\]?\s+([a-zA-Z_\$][^\s]+)(\s+=\s+.*)?$/;
+function parseLoadedFilesAndSymbols(lines, i) {
     i += 2;
     while (lines[i] != "") {
         let res = lines[i].match(/^LOAD (.+)$/);
         if (res) {
             loadedfiles.push(res[1]);
+        } else if ((res = lines[i].match(symbolRegex))) {
+            symbols[res[3]] = parseInt(res[1]);
         }
         i++;
     }
     return i;
+}
+
+function parseSections(lines, i) {
 }
