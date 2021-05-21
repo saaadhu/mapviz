@@ -161,7 +161,7 @@ function parseLoadedFilesAndSymbols(lines, i) {
         if (res) {
             loadedfiles.push(res[1]);
         } else if ((res = lines[i].match(symbolRegex))) {
-            symbols[res[3]] = parseInt(res[1]);
+            symbols[res[3]] = { name : res[3], section: null, value: parseInt(res[1])};
         }
         i++;
     }
@@ -171,23 +171,41 @@ function parseLoadedFilesAndSymbols(lines, i) {
 let outputsections = [];
 let inputsections = [];
 function parseSections(lines, i) {
-    let current_osname = "";
+    let current_name = "";
+    let current_section = null;
     while (i<lines.length) {
-        let res = lines[i].match(/^([^\s]+)\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))$/);
-        /* This is an output section with addr and size on same line */
+        let res = lines[i].match(/^( )?([^\s]+)\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))( (.*))?$/);
         if (res) {
-            current_osname = res[1];
-            outputsections.push(
-                { name: current_osname, addr: parseInt(res[2]), size: parseInt(res[4])});
+            /* This is a section with addr and size on same line */
+            current_name = res[2];
+            current_section = { name: current_name, addr: parseInt(res[3]), size: parseInt(res[5])};
+
+            /* If there is a space char first up, it is an input section */
+            if (res[1]) {
+                current_section.type = "input";
+                current_section.file = res[8];
+                inputsections.push (current_section);
+            } else {
+                current_section.type = "output";
+                outputsections.push (current_section);
+            }
         } else if ((res = lines[i].match(symbolRegex))) {
-            symbols[res[3]] = parseInt(res[1]);
-        } else if ((res = lines[i].match(/^([^\s]+)$/))) {
-            /* Output section with just name on first line, following line
-               has addr and size */
-            current_osname = res[1];
-        } else if ((res = lines[i].match(/^\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))$/))) {
-            outputsections.push(
-                { name: current_osname, addr: parseInt(res[1]), size: parseInt(res[3])});
+            symbols[res[3]] = { name : res[3], section: current_section, value: parseInt(res[1]) };
+        } else if ((res = lines[i].match(/^( )?([^\s]+)$/))) {
+            /* Section with just name on first line, following line has addr and size */
+            current_name = res[2];
+        } else if ((res = lines[i].match(/^\s+(0x([0-9a-f]+))\s+(0x([0-9a-f]+))( (.*))?$/))) {
+            current_section = { name: current_name, addr: parseInt(res[1]), size: parseInt(res[3])};
+            /* Assumption: all input sections have a filename */
+            if (res[6]) {
+                current_section.file = res[6];
+                current_section.type = "input";
+            } else {
+                current_section.type = "output";
+            }
+
+            let arr = current_section.type == "output" ? outputsections : inputsections;
+            arr.push(current_section);
         }
         i++;
     }
