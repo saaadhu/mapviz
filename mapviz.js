@@ -113,9 +113,26 @@ let regions = {
 let loadedfiles = [];
 let symbols = {};
 
+function addOrUpdateSymbol({name = "n", file = null, section=null, value = -1, referencedObjFiles=[]} = {}) {
+    let sym = symbols[name];
+    if (!sym) {
+        sym = {name : name, referencedObjFiles : []};
+        symbols[name] = sym;
+    }
+    sym.file = file;
+    sym.section = section;
+    sym.value = value;
+    for (i = 0; i<referencedObjFiles.length; ++i)
+        sym.referencedObjFiles.push(referencedObjFiles[i]);
+    return sym;
+}
+
 function parseMapFileText(contents) {
     let lines = contents.split("\n");
     for (let i = 0; i<lines.length;) {
+        if (lines[i] == "Archive member included to satisfy reference by file (symbol)") {
+            i = parseArchiveRefs(lines, i)
+        }
         if (lines[i] == "Memory Configuration") {
             i = parseMemoryConfiguration(lines, i);
         } else if (lines[i] == "Linker script and memory map") {
@@ -125,6 +142,26 @@ function parseMapFileText(contents) {
             i++;
         }
     }
+}
+
+/* Key = objfile in archive, value is symbol causing it to be linked */
+let archiveObjfileSymRefs  = {};
+function parseArchiveRefs(lines, i) {
+    i += 2;
+    let referencedObjFile = null; let archive = null; let objfile = null;
+    while (lines[i] != "") {
+        let res = lines[i].match(/^(?<archive>[^\s].+)\((?<objfile>.+)\)$/);
+        if (res) {
+            archive = res.groups["archive"]; objfile = res.groups["objfile"];
+            referencedObjFile =  res[0];
+        } else if ((res = lines[i].match(/^\s+(?<objfile>.+) \((?<symbol>.+)\)$/))) {
+            let sym = addOrUpdateSymbol ({name: res.groups["symbol"], file: res.groups["objfile"],
+                                          referencedObjFiles: [referencedObjFile]});
+            archiveObjfileSymRefs[referencedObjFile] = sym;
+        }
+        i++;
+    }
+    return i;
 }
 
 function parseMemoryConfiguration(lines, i) {
@@ -147,7 +184,7 @@ function parseLoadedFilesAndSymbols(lines, i) {
         if (res) {
             loadedfiles.push(res[1]);
         } else if ((res = lines[i].match(symbolRegex))) {
-            symbols[res[3]] = { name : res[3], section: null, value: parseInt(res[1])};
+            addOrUpdateSymbol({ name : res[3], value: parseInt(res[1])});
         }
         i++;
     }
@@ -180,7 +217,7 @@ function parseSections(lines, i) {
                 outputsections.push (current_section);
             }
         } else if ((res = lines[i].match(symbolRegex))) {
-            symbols[res[3]] = { name : res[3], section: current_section, value: parseInt(res[1]) };
+            addOrUpdateSymbol({ name : res[3], file: current_section.file, section: current_section, value: parseInt(res[1]) });
         } else if ((res = lines[i].match(/^( )?([^\s]+)$/))) {
             /* Section with just name on first line, following line has addr and size */
             current_name = res[2];
