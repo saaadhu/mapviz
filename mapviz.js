@@ -81,20 +81,6 @@ function uid(e) {
   return svg.node();
 }
 
-
-    const data = { name : "root",
-                   children : [
-                       { name : "object1.o",
-                         children: [
-                             {name : ".text.function1", value : 100 },
-                             {name : ".text.function2", value : 200 }]},
-                       { name : "object2.o",
-                         children: [
-                             {name : ".text.someotherfunction1", value : 100 },
-                             {name : ".text.someotherfunction2", value : 200 }]}]};
-
-
-
 const filechooser = document.querySelector("#mapfilechooser");
 filechooser.addEventListener('change', (event) => {
     if (filechooser.files.length == 0)
