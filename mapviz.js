@@ -81,6 +81,29 @@ function uid(e) {
   return svg.node();
 }
 
+function showrefs() {
+    const symbolname = document.querySelector("#querytext").value;
+    let sym = symbols[symbolname];
+    let objfile = sym.referencedObjFiles[0];
+    let refslist = [ sym ];
+    while (objfile) {
+        sym = archiveObjfileSymRefs[objfile];
+        if (!sym)
+            break;
+        refslist.push (sym);
+        objfile = sym.referencedObjFiles[0];
+    }
+    refslist.reverse();
+
+    let frag = refslist.map(refsym =>
+                            "<br> " + refsym.referencedObjFiles[0] + " references symbol <b>" + refsym.name + "</b>" +
+                            "<br> " + " defined in " + refsym.file)
+        .join("<br><br>");
+
+    document.querySelector("#queryresults").innerHTML = frag;
+}
+
+
 const filechooser = document.querySelector("#mapfilechooser");
 filechooser.addEventListener('change', (event) => {
     if (filechooser.files.length == 0)
@@ -92,6 +115,8 @@ async function analyze (file) {
     const filecontent = await file.text();
     const data = parseMapFileText(filecontent);
     const main = document.querySelector("#main");
+    const refanalyzerbutton = document.querySelector ("#refanalyzerbutton");
+    refanalyzerbutton.addEventListener ('click', showrefs);
     main.innerHTML = "";
     if (data)
         main.appendChild(createVisualization(data));
@@ -148,16 +173,16 @@ function parseMapFileText(contents) {
 let archiveObjfileSymRefs  = {};
 function parseArchiveRefs(lines, i) {
     i += 2;
-    let referencedObjFile = null; let archive = null; let objfile = null;
+    let definingObjFile = null; let archive = null; let objfile = null;
     while (lines[i] != "") {
         let res = lines[i].match(/^(?<archive>[^\s].+)\((?<objfile>.+)\)$/);
         if (res) {
             archive = res.groups["archive"]; objfile = res.groups["objfile"];
-            referencedObjFile =  res[0];
+            definingObjFile = res[0];
         } else if ((res = lines[i].match(/^\s+(?<objfile>.+) \((?<symbol>.+)\)$/))) {
-            let sym = addOrUpdateSymbol ({name: res.groups["symbol"], file: res.groups["objfile"],
-                                          referencedObjFiles: [referencedObjFile]});
-            archiveObjfileSymRefs[referencedObjFile] = sym;
+            let sym = addOrUpdateSymbol ({name: res.groups["symbol"], file: definingObjFile,
+                                          referencedObjFiles: [res.groups["objfile"]]});
+            archiveObjfileSymRefs[definingObjFile] = sym;
         }
         i++;
     }
